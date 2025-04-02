@@ -9,10 +9,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf333 # v3.5.0
+      with:
+        fetch-depth: 0
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@39cd14951b08e74b54015e0e001cdefcf483e69 # v4.5.0
       with:
         python-version: '3.11'
 
@@ -24,7 +26,7 @@ jobs:
     - name: Download NDK
       run: |
         wget https://dl.google.com/android/repository/android-ndk-r27c-linux.zip
-        unzip android-ndk-r27c-linux.zip -d $HOME/android-ndk-r27c
+        unzip android-ndk-r25b-linux.zip -d $HOME/android-ndk-r27c
 
     - name: Create buildozer.spec
       run: |
@@ -40,7 +42,7 @@ jobs:
         buildozer android debug
 
     - name: Upload APK
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@834a144ee99544a0d6773514d516f3eb0c62332 # v3.1.2
       with:
         name: Helper-APK
         path: bin/*.apk
