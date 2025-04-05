@@ -71,33 +71,14 @@ jobs:
           sed -i 's|#android.ndk_path =|android.ndk_path = /home/runner/android-ndk-r27c|' buildozer.spec
           # Add required Android permissions (ensure line is uncommented)
           sed -i 's/#android.permissions =/android.permissions = RECORD_AUDIO/' buildozer.spec
-
+          # *** ADD THIS LINE: Explicitly set the build tools version to match the installed one ***
+          sed -i 's/#android.build_tools_version =/android.build_tools_version = 34.5.0/' buildozer.spec
       # Builds the Android APK with debugging output
       # Corrected: Fixed indentation and removed trailing content from previous step
       - name: Build APK
         run: |
-          echo "--- Debugging Environment ---"
-          echo "1. ANDROID_HOME: $ANDROID_HOME"
-          echo "2. ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
-          echo "3. Current PATH: $PATH"
-          
-          echo "4. Checking SDK Structure..."
-          # Check the specific build-tools version requested (34.5.0)
-          ls -la $ANDROID_HOME/build-tools/ || echo "Could not list $ANDROID_HOME/build-tools/"
-          ls -la $ANDROID_HOME/build-tools/34.5.0/ || echo "Could not list $ANDROID_HOME/build-tools/34.5.0/"
-          
-          echo "5. Searching for aidl..."
-          find $ANDROID_HOME -name aidl || echo "aidl not found via find command"
-          
-          echo "6. Attempting 'which aidl' after potential PATH export:"
-          # Export path using the specific build-tools version requested (34.5.0)
-          export PATH="$ANDROID_HOME/build-tools/34.5.0:$PATH"
-          echo "   Updated PATH: $PATH" 
-          which aidl || echo "aidl not found via which command"
-          echo "--- End Debugging ---"
-
-          # Now attempt the buildozer command again
-          buildozer android debug
+      # Buildozer shoud now use the preinstalled SDK components 
+         buildozer android debug
 
       # Uploads the generated APK as an artifact
       - name: Upload APK
