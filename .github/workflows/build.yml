@@ -42,7 +42,7 @@ jobs:
         buildozer android debug
 
     - name: Upload APK
-      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+      uses: actions/upload-artifact@v3
       continue-on-error: true
       with:
         name: Helper-APK
