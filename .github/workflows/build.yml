@@ -27,6 +27,12 @@ jobs:
       run: |
         pip install cython
 
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        sdk-version: '34'
+        build-tools-version: '34.0.0' # Or the latest 34.x.x version
+
     - name: Download NDK
       run: |
         wget https://dl.google.com/android/repository/android-ndk-r27c-linux.zip
@@ -47,7 +53,6 @@ jobs:
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
-      continue-on-error: true
       with:
         name: Helper-APK
         path: bin/*.apk
