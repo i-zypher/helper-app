@@ -30,8 +30,8 @@ jobs:
     - name: Set up Android SDK
       uses: android-actions/setup-android@v3
       with:
-        sdk-version: '34'
-        build-tools-version: '34.0.0' # Or the latest 34.x.x version
+        packages: 'cmdline-tools;latest platform-tools build-tools;34.5.0'
+        accept-android-sdk-liscense: true
 
     - name: Download NDK
       run: |
