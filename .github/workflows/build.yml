@@ -38,6 +38,11 @@ jobs:
         run: |
           pip install cython
 
+      # *** ADDED: Upgrade Buildozer and python-for-android ***
+      - name: Upgrade Buildozer and P4A
+        run: |
+          pip install --upgrade buildozer python-for-android
+
       # Install cmdline-tools, accept licenses, and copy them for Buildozer
       - name: Install Command-line Tools & Accept/Copy Licenses
         run: |
@@ -45,6 +50,7 @@ jobs:
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
           # Create directory structure for manual SDK tools
           mkdir -p $HOME/android-sdk/cmdline-tools
+          # Unzip into the 'latest' subdirectory structure expected by sdkmanager
           unzip cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
           mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
           # Add the tools bin directory to the PATH for this step
@@ -55,11 +61,10 @@ jobs:
           # Accept all licenses non-interactively
           echo "Accepting licenses for manual SDK..."
           yes | sdkmanager --licenses --sdk_root=$ANDROID_HOME || echo "Manual sdkmanager licenses failed"
-          # *** ADDED: Create Buildozer's expected license dir and copy accepted licenses ***
+          # Create Buildozer's expected license dir and copy accepted licenses
           echo "Copying accepted licenses for Buildozer..."
           mkdir -p /home/runner/.buildozer/android/platform/android-sdk/licenses/
           cp $ANDROID_HOME/licenses/* /home/runner/.buildozer/android/platform/android-sdk/licenses/ || echo "Failed to copy licenses"
-
 
       # Creates and configures the buildozer.spec file
       - name: Create buildozer.spec
@@ -70,7 +75,7 @@ jobs:
           sed -i 's/android.minapi = 21/android.minapi = 21/' buildozer.spec
           # REMOVED android.sdk_path and android.ndk_path
           sed -i 's/#android.permissions =/android.permissions = RECORD_AUDIO/' buildozer.spec
-          # *** CHANGED: Try pinning to build tools 33.0.2 ***
+          # Using build tools 33.0.2
           sed -i 's/#android.build_tools_version =/android.build_tools_version = 33.0.2/' buildozer.spec
           # Set NDK version for Buildozer to download
           sed -i 's/#android.ndk = 25b/android.ndk = 25b/' buildozer.spec
