@@ -40,6 +40,7 @@ jobs:
 
       # Set up Android Environment Manually
       - name: Set up Android Environment Manually
+        id: setup_sdk # Give this step an ID so we can potentially reference its outputs if needed
         run: |
           # Define SDK root path
           SDK_ROOT=$HOME/android-sdk
@@ -58,25 +59,25 @@ jobs:
           # Define absolute path to sdkmanager
           SDKMANAGER_CMD=${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
 
-          # Add tool paths to GITHUB_PATH for subsequent steps (like Build APK)
+          # Add tool paths to GITHUB_PATH for subsequent steps
           echo "${SDK_ROOT}/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "${SDK_ROOT}/platform-tools" >> $GITHUB_PATH
-          BUILD_TOOLS_VERSION=33.0.2 # Define version to install/use
+          BUILD_TOOLS_VERSION=33.0.2
           echo "${SDK_ROOT}/build-tools/${BUILD_TOOLS_VERSION}" >> $GITHUB_PATH
 
-          # Install platform-tools and specific build-tools version using absolute path
+          # Install platform-tools and specific build-tools version
           echo "Installing platform-tools and build-tools ${BUILD_TOOLS_VERSION}..."
           ${SDKMANAGER_CMD} --sdk_root=${SDK_ROOT} "platform-tools" "build-tools;${BUILD_TOOLS_VERSION}" || echo "sdkmanager install failed"
 
-          # Accept licenses for this SDK root using absolute path
+          # Accept licenses for this SDK root
           echo "Accepting licenses..."
           yes | ${SDKMANAGER_CMD} --licenses --sdk_root=${SDK_ROOT} || echo "sdkmanager licenses failed"
 
-          # List installed packages using absolute path
+          # List installed packages
           echo "Listing installed packages:"
           ${SDKMANAGER_CMD} --list_installed --sdk_root=${SDK_ROOT} || echo "sdkmanager list failed"
 
-          echo "SDK setup complete. Effective PATH for next steps will include tool directories."
+          echo "SDK setup complete."
 
       # Download NDK r25b Manually
       - name: Download NDK r25b
@@ -84,9 +85,22 @@ jobs:
           echo "Downloading NDK r25b..."
           wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O android-ndk-r25b.zip
           unzip android-ndk-r25b.zip -d $HOME/ndk
-          # Rename the extracted folder to a known name
           mv $HOME/ndk/android-ndk-r25b $HOME/android-ndk-r25b
           echo "NDK r25b installed to $HOME/android-ndk-r25b"
+
+      # *** ADDED: Create Symlink for old sdkmanager path ***
+      - name: Create sdkmanager Symlink
+        run: |
+          echo "Creating symlink for sdkmanager..."
+          SDK_ROOT=$HOME/android-sdk
+          # Create the old directory structure Buildozer/p4a expects
+          mkdir -p ${SDK_ROOT}/tools/bin
+          # Link the *new* sdkmanager to the *old* expected path
+          ln -s ${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager ${SDK_ROOT}/tools/bin/sdkmanager
+          # Optionally link other tools if needed later
+          # ln -s ${SDK_ROOT}/cmdline-tools/latest/bin/avdmanager ${SDK_ROOT}/tools/bin/avdmanager
+          echo "Symlink created."
+          ls -l ${SDK_ROOT}/tools/bin/
 
       # Set up Java 11
       - name: Set up Java 11
@@ -128,3 +142,4 @@ jobs:
         with:
           name: Helper-APK
           path: bin/*.apk
+
