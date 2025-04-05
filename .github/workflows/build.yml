@@ -12,15 +12,13 @@ jobs:
   # This workflow contains a single job called "build"
   build:
     # The type of runner that the job will run on
-    # Using ubuntu-22.04 which might have more stable base Java/SDK components if needed
-    runs-on: ubuntu-22.04 # Changed runner slightly just in case
+    runs-on: ubuntu-22.04
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
         with:
-          # Fetch all history for all tags and branches
           fetch-depth: 0
 
       # Sets up Python environment
@@ -40,45 +38,42 @@ jobs:
         run: |
           pip install cython
 
-      # *** NEW STEP: Install cmdline-tools and accept licenses ***
-      - name: Install Command-line Tools & Accept Licenses
+      # Install cmdline-tools, accept licenses, and copy them for Buildozer
+      - name: Install Command-line Tools & Accept/Copy Licenses
         run: |
-          # Download command-line tools (URL might change, check Android Studio site for latest)
-          # Example URL - replace XXXXXXX with current version if known, otherwise latest often works
+          # Download command-line tools (Example URL - may need updating)
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-          # Create a directory for the tools
+          # Create directory structure for manual SDK tools
           mkdir -p $HOME/android-sdk/cmdline-tools
-          # Unzip into the 'latest' subdirectory structure expected by sdkmanager
           unzip cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
           mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
           # Add the tools bin directory to the PATH for this step
           echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH # Also add platform-tools path if needed later
           # Set ANDROID_HOME/SDK_ROOT for the sdkmanager command
           export ANDROID_HOME=$HOME/android-sdk
           export ANDROID_SDK_ROOT=$HOME/android-sdk
           # Accept all licenses non-interactively
-          yes | sdkmanager --licenses --sdk_root=$ANDROID_HOME || echo "sdkmanager licenses failed"
-          # Optionally, update all installed packages (might help avoid later issues)
-          # sdkmanager --update --sdk_root=$ANDROID_HOME || echo "sdkmanager update failed"
+          echo "Accepting licenses for manual SDK..."
+          yes | sdkmanager --licenses --sdk_root=$ANDROID_HOME || echo "Manual sdkmanager licenses failed"
+          # *** ADDED: Create Buildozer's expected license dir and copy accepted licenses ***
+          echo "Copying accepted licenses for Buildozer..."
+          mkdir -p /home/runner/.buildozer/android/platform/android-sdk/licenses/
+          cp $ANDROID_HOME/licenses/* /home/runner/.buildozer/android/platform/android-sdk/licenses/ || echo "Failed to copy licenses"
+
 
       # Creates and configures the buildozer.spec file
       - name: Create buildozer.spec
         run: |
           buildozer init
-          # Add necessary requirements
           sed -i 's/requirements =/requirements = python3,kivy,pyttsx3,speechrecognition/' buildozer.spec
-          # Set target Android API level
           sed -i 's/android.api = 31/android.api = 34/' buildozer.spec
-          # Set minimum Android API level
           sed -i 's/android.minapi = 21/android.minapi = 21/' buildozer.spec
-          # *** REMOVED android.sdk_path and android.ndk_path ***
-          # Add required Android permissions
+          # REMOVED android.sdk_path and android.ndk_path
           sed -i 's/#android.permissions =/android.permissions = RECORD_AUDIO/' buildozer.spec
-          # Explicitly set the build tools version for Buildozer to download
-          sed -i 's/#android.build_tools_version =/android.build_tools_version = 34.5.0/' buildozer.spec
-          # *** ADDED: Explicitly set the NDK version for Buildozer to download (as recommended in previous log) ***
-          sed -i 's/#android.ndk = 25b/android.ndk = 25b/' buildozer.spec # Adjust if line differs in template
+          # *** CHANGED: Try pinning to build tools 33.0.2 ***
+          sed -i 's/#android.build_tools_version =/android.build_tools_version = 33.0.2/' buildozer.spec
+          # Set NDK version for Buildozer to download
+          sed -i 's/#android.ndk = 25b/android.ndk = 25b/' buildozer.spec
 
       # Builds the Android APK - Buildozer should now download and manage its own SDK/NDK
       - name: Build APK
@@ -90,5 +85,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Helper-APK
-          # Path where buildozer outputs the debug APK
           path: bin/*.apk
