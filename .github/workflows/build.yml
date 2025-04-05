@@ -50,6 +50,9 @@ jobs:
 
     - name: Build APK
       run: |
+        # Explicitly add the build-tools directory to the PATH
+        # Assumes ANDROID_HOME is set by setup-android and build-tools 34.0.0 was installed
+        export PATH="$ANDROID_HOME/build-tools/34.0.0:$PATH"
         buildozer android debug
 
     - name: Upload APK
