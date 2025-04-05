@@ -1,4 +1,4 @@
-# Workflow name
+k# Workflow name
 name: Build Android APK
 
 # Controls when the workflow will run
@@ -19,6 +19,7 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
         with:
+          # Fetch all history for all tags and branches
           fetch-depth: 0
 
       # Sets up Python environment
@@ -50,9 +51,11 @@ jobs:
 
           # Download and unzip latest command-line tools
           echo "Downloading command-line tools..."
+          # Using a known stable version URL as latest can change
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
           mkdir -p ${SDK_ROOT}/cmdline-tools
           unzip cmdline-tools.zip -d ${SDK_ROOT}/cmdline-tools
+          # Create the 'latest' directory structure
           mv ${SDK_ROOT}/cmdline-tools/cmdline-tools ${SDK_ROOT}/cmdline-tools/latest
           echo "Command-line tools installed to ${SDK_ROOT}/cmdline-tools/latest"
 
@@ -62,17 +65,26 @@ jobs:
           # Add tool paths to GITHUB_PATH for subsequent steps
           echo "${SDK_ROOT}/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "${SDK_ROOT}/platform-tools" >> $GITHUB_PATH
-          BUILD_TOOLS_VERSION=33.0.2
+          BUILD_TOOLS_VERSION=33.0.2 # Define version to install/use
           echo "${SDK_ROOT}/build-tools/${BUILD_TOOLS_VERSION}" >> $GITHUB_PATH
 
           # Install platform-tools and specific build-tools version
           echo "Installing platform-tools and build-tools ${BUILD_TOOLS_VERSION}..."
           # Using --install flag for clarity, though often implied
-          ${SDKMANAGER_CMD} --install "platform-tools" "build-tools;${BUILD_TOOLS_VERSION}" --sdk_root=${SDK_ROOT} || echo "sdkmanager install failed"
+          # Added check for command success
+          if ! ${SDKMANAGER_CMD} --install "platform-tools" "build-tools;${BUILD_TOOLS_VERSION}" --sdk_root=${SDK_ROOT}; then
+            echo "sdkmanager install failed!"
+            exit 1
+          fi
 
           # Accept licenses for this SDK root
           echo "Accepting licenses..."
-          yes | ${SDKMANAGER_CMD} --licenses --sdk_root=${SDK_ROOT} || echo "sdkmanager licenses failed"
+          # Added check for command success
+          if ! yes | ${SDKMANAGER_CMD} --licenses --sdk_root=${SDK_ROOT}; then
+             echo "sdkmanager licenses failed!"
+             # Optionally exit, though license failure might not always return non-zero
+             # exit 1
+          fi
 
           # List installed packages
           echo "Listing installed packages:"
@@ -100,8 +112,6 @@ jobs:
           ln -s ${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager ${SDK_ROOT}/tools/bin/sdkmanager
           echo "Symlink created."
           ls -l ${SDK_ROOT}/tools/bin/
-
-      # *** REMOVED Set up Java 11 step ***
 
       # Creates and configures the buildozer.spec file to use the manual setup
       - name: Create buildozer.spec
@@ -136,141 +146,4 @@ jobs:
         with:
           name: Helper-APK
           path: bin/*.apk
-# Workflow name
-name: Build Android APK
 
-# Controls when the workflow will run
-on:
-  # Triggers the workflow on push events but only for the main branch
-  push:
-    branches: [ main ]
-
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
-jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-22.04
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # Sets up Python environment
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      # Installs Python dependencies (Buildozer)
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install buildozer
-
-      # Installs Cython (often required by Kivy recipes)
-      - name: Install Cython
-        run: |
-          pip install cython
-
-      # Set up Android Environment Manually
-      - name: Set up Android Environment Manually
-        id: setup_sdk
-        run: |
-          # Define SDK root path
-          SDK_ROOT=$HOME/android-sdk
-          echo "ANDROID_HOME=${SDK_ROOT}" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=${SDK_ROOT}" >> $GITHUB_ENV
-          mkdir -p ${SDK_ROOT}
-
-          # Download and unzip latest command-line tools
-          echo "Downloading command-line tools..."
-          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-          mkdir -p ${SDK_ROOT}/cmdline-tools
-          unzip cmdline-tools.zip -d ${SDK_ROOT}/cmdline-tools
-          mv ${SDK_ROOT}/cmdline-tools/cmdline-tools ${SDK_ROOT}/cmdline-tools/latest
-          echo "Command-line tools installed to ${SDK_ROOT}/cmdline-tools/latest"
-
-          # Define absolute path to sdkmanager
-          SDKMANAGER_CMD=${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
-
-          # Add tool paths to GITHUB_PATH for subsequent steps
-          echo "${SDK_ROOT}/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "${SDK_ROOT}/platform-tools" >> $GITHUB_PATH
-          BUILD_TOOLS_VERSION=33.0.2
-          echo "${SDK_ROOT}/build-tools/${BUILD_TOOLS_VERSION}" >> $GITHUB_PATH
-
-          # Install platform-tools and specific build-tools version
-          echo "Installing platform-tools and build-tools ${BUILD_TOOLS_VERSION}..."
-          # Using --install flag for clarity, though often implied
-          ${SDKMANAGER_CMD} --install "platform-tools" "build-tools;${BUILD_TOOLS_VERSION}" --sdk_root=${SDK_ROOT} || echo "sdkmanager install failed"
-
-          # Accept licenses for this SDK root
-          echo "Accepting licenses..."
-          yes | ${SDKMANAGER_CMD} --licenses --sdk_root=${SDK_ROOT} || echo "sdkmanager licenses failed"
-
-          # List installed packages
-          echo "Listing installed packages:"
-          ${SDKMANAGER_CMD} --list_installed --sdk_root=${SDK_ROOT} || echo "sdkmanager list failed"
-
-          echo "SDK setup complete."
-
-      # Download NDK r25b Manually
-      - name: Download NDK r25b
-        run: |
-          echo "Downloading NDK r25b..."
-          wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O android-ndk-r25b.zip
-          unzip android-ndk-r25b.zip -d $HOME/ndk
-          mv $HOME/ndk/android-ndk-r25b $HOME/android-ndk-r25b
-          echo "NDK r25b installed to $HOME/android-ndk-r25b"
-
-      # Create Symlink for old sdkmanager path
-      - name: Create sdkmanager Symlink
-        run: |
-          echo "Creating symlink for sdkmanager..."
-          SDK_ROOT=$HOME/android-sdk
-          # Create the old directory structure Buildozer/p4a expects
-          mkdir -p ${SDK_ROOT}/tools/bin
-          # Link the *new* sdkmanager to the *old* expected path
-          ln -s ${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager ${SDK_ROOT}/tools/bin/sdkmanager
-          echo "Symlink created."
-          ls -l ${SDK_ROOT}/tools/bin/
-
-      # *** REMOVED Set up Java 11 step ***
-
-      # Creates and configures the buildozer.spec file to use the manual setup
-      - name: Create buildozer.spec
-        run: |
-          buildozer init
-          sed -i 's/requirements =/requirements = python3,kivy,pyttsx3,speechrecognition/' buildozer.spec
-          sed -i 's/android.api = 31/android.api = 34/' buildozer.spec
-          sed -i 's/android.minapi = 21/android.minapi = 21/' buildozer.spec
-          sed -i 's/#android.permissions =/android.permissions = RECORD_AUDIO/' buildozer.spec
-          # Point to manually installed SDK and NDK
-          sed -i 's|#android.sdk_path =|android.sdk_path = /home/runner/android-sdk|' buildozer.spec
-          sed -i 's|#android.ndk_path =|android.ndk_path = /home/runner/android-ndk-r25b|' buildozer.spec
-          # Set specific build-tools and NDK versions
-          sed -i 's/#android.build_tools_version =/android.build_tools_version = 33.0.2/' buildozer.spec
-          sed -i 's/#android.ndk = 25b/android.ndk = 25b/' buildozer.spec
-
-      # Builds the Android APK
-      - name: Build APK
-        run: |
-          echo "Running Buildozer..."
-          # Check effective paths just before build
-          echo "Effective ANDROID_HOME: $ANDROID_HOME"
-          echo "Effective PATH: $PATH"
-          which sdkmanager || echo "sdkmanager not found by which"
-          which adb || echo "adb not found by which"
-          which aidl || echo "aidl not found by which"
-          buildozer -v android debug
-
-      # Uploads the generated APK as an artifact
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Helper-APK
-          path: bin/*.apk
