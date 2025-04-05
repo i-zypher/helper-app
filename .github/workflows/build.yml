@@ -43,12 +43,9 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
-          # Corrected: Use 'cmdline-tools;11.0' not 'cmdline-tools-version;11.0'
-          # Using build-tools 34.5.0 as specified
+          # Using 'cmdline-tools;11.0' and specific build-tools version
           packages: 'cmdline-tools;11.0 platform-tools build-tools;34.5.0'
-          # Corrected: Indentation fixed for the following lines
           accept-android-sdk-licenses: true
-          # Optional: Log accepted licenses
           log-accepted-android-sdk-licenses: false
 
       # Downloads and unzips the Android NDK (r27c)
@@ -73,12 +70,13 @@ jobs:
           sed -i 's/#android.permissions =/android.permissions = RECORD_AUDIO/' buildozer.spec
           # Explicitly set the build tools version to match the installed one
           sed -i 's/#android.build_tools_version =/android.build_tools_version = 34.5.0/' buildozer.spec
+          # Explicitly set the SDK path where setup-android likely installed it
+          sed -i 's|#android.sdk_path =|android.sdk_path = /usr/local/lib/android/sdk|' buildozer.spec
 
       # Builds the Android APK
       - name: Build APK
         run: |
-          # Corrected: Indentation fixed for the command below
-          # Buildozer should now use the pre-installed SDK components
+          # Buildozer should now use the pre-installed SDK components specified in the spec
           buildozer android debug
 
       # Uploads the generated APK as an artifact
