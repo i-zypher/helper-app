@@ -1,77 +1,109 @@
+# Workflow name
 name: Build Android APK
 
+# Controls when the workflow will run
 on:
+  # Triggers the workflow on push events but only for the main branch
   push:
     branches: [ main ]
 
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
+  # This workflow contains a single job called "build"
   build:
+    # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
+    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+        with:
+          # Fetch all history for all tags and branches
+          fetch-depth: 0
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      # Sets up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install buildozer
+      # Installs Python dependencies (Buildozer)
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install buildozer
 
-    - name: Install Cython
-      run: |
-        pip install cython
+      # Installs Cython (often required by Kivy recipes)
+      - name: Install Cython
+        run: |
+          pip install cython
 
-    - name: Set up Android SDK
-      uses: android-actions/setup-android@v2
-      with:
-        packages: 'cmdline-tools-version;11.0 platform-tools build-tools;34.5.0'
-        accept-android-sdk-licenses: true
-        log-accepted-android-sdk-licenses: false
+      # Sets up Android SDK using android-actions/setup-android@v2
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          # Corrected: Use 'cmdline-tools;11.0' not 'cmdline-tools-version;11.0'
+          # Using build-tools 34.5.0 as specified
+          packages: 'cmdline-tools;11.0 platform-tools build-tools;34.5.0'
+          accept-android-sdk-licenses: true
+          # Optional: Log accepted licenses (typo corrected previously)
+          log-accepted-android-sdk-licenses: false
 
-    - name: Download NDK
-      run: |
-        wget https://dl.google.com/android/repository/android-ndk-r27c-linux.zip
-        unzip android-ndk-r27c-linux.zip -d $HOME/android-ndk-r27c
+      # Downloads and unzips the Android NDK (r27c)
+      - name: Download NDK
+        run: |
+          wget https://dl.google.com/android/repository/android-ndk-r27c-linux.zip
+          unzip android-ndk-r27c-linux.zip -d $HOME/android-ndk-r27c
 
-    - name: Create buildozer.spec
-      run: |
-        buildozer init
-        sed -i 's/requirements =/requirements = python3,kivy,pyttsx3,speechrecognition/' buildozer.spec
-        sed -i 's/android.api = 31/android.api = 34/' buildozer.spec
-        sed -i 's/android.minapi = 21/android.minapi = 21/' buildozer.spec
-        sed -i 's/android.ndk_path =/android.ndk_path = \/home\/runner\/android-ndk-r27c/' buildozer.spec
-        sed -i 's/android.permissions =/android.permissions = RECORD_AUDIO/' buildozer.spec
+      # Creates and configures the buildozer.spec file
+      - name: Create buildozer.spec
+        run: |
+          buildozer init
+          # Add necessary requirements
+          sed -i 's/requirements =/requirements = python3,kivy,pyttsx3,speechrecognition/' buildozer.spec
+          # Set target Android API level
+          sed -i 's/android.api = 31/android.api = 34/' buildozer.spec
+          # Set minimum Android API level
+          sed -i 's/android.minapi = 21/android.minapi = 21/' buildozer.spec
+          # Set the path to the downloaded NDK (ensure path matches unzip destination)
+          # Corrected sed command to uncomment and set path properly
+          sed -i 's|#android.ndk_path =|android.ndk_path = /home/runner/android-ndk-r27c|' buildozer.spec
+          # Add required Android permissions (ensure line is uncommented)
+          sed -i 's/#android.permissions =/android.permissions = RECORD_AUDIO/' buildozer.spec
 
-     - name: Build APK
-      run: |
-        echo "--- Debugging Environment ---"
-        echo "1. ANDROID_HOME: $ANDROID_HOME"
-        echo "2. ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
-        echo "3. Current PATH: $PATH"
-        
-        echo "4. Checking SDK Structure..."
-        ls -la $ANDROID_HOME/build-tools/ || echo "Could not list $ANDROID_HOME/build-tools/"
-        ls -la $ANDROID_HOME/build-tools/34.0.0/ || echo "Could not list $ANDROID_HOME/build-tools/34.0.0/"
-        
-        echo "5. Searching for aidl..."
-        find $ANDROID_HOME -name aidl || echo "aidl not found via find command"
-        
-        echo "6. Attempting 'which aidl' after potential PATH export:"
-        export PATH="$ANDROID_HOME/build-tools/34.0.0:$PATH" # Keep the export attempt for now
-        echo "   Updated PATH: $PATH" 
-        which aidl || echo "aidl not found via which command"
-        echo "--- End Debugging ---"
+      # Builds the Android APK with debugging output
+      # Corrected: Fixed indentation and removed trailing content from previous step
+      - name: Build APK
+        run: |
+          echo "--- Debugging Environment ---"
+          echo "1. ANDROID_HOME: $ANDROID_HOME"
+          echo "2. ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+          echo "3. Current PATH: $PATH"
+          
+          echo "4. Checking SDK Structure..."
+          # Check the specific build-tools version requested (34.5.0)
+          ls -la $ANDROID_HOME/build-tools/ || echo "Could not list $ANDROID_HOME/build-tools/"
+          ls -la $ANDROID_HOME/build-tools/34.5.0/ || echo "Could not list $ANDROID_HOME/build-tools/34.5.0/"
+          
+          echo "5. Searching for aidl..."
+          find $ANDROID_HOME -name aidl || echo "aidl not found via find command"
+          
+          echo "6. Attempting 'which aidl' after potential PATH export:"
+          # Export path using the specific build-tools version requested (34.5.0)
+          export PATH="$ANDROID_HOME/build-tools/34.5.0:$PATH"
+          echo "   Updated PATH: $PATH" 
+          which aidl || echo "aidl not found via which command"
+          echo "--- End Debugging ---"
 
-        # Now attempt the buildozer command again
-        buildozer android debug
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: Helper-APK
-        path: bin/*.apk
+          # Now attempt the buildozer command again
+          buildozer android debug
+
+      # Uploads the generated APK as an artifact
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Helper-APK
+          # Path where buildozer outputs the debug APK
+          path: bin/*.apk
+
