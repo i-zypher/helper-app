@@ -48,13 +48,28 @@ jobs:
         sed -i 's/android.ndk_path =/android.ndk_path = \/home\/runner\/android-ndk-r27c/' buildozer.spec
         sed -i 's/android.permissions =/android.permissions = RECORD_AUDIO/' buildozer.spec
 
-    - name: Build APK
+     - name: Build APK
       run: |
-        # Explicitly add the build-tools directory to the PATH
-        # Assumes ANDROID_HOME is set by setup-android and build-tools 34.0.0 was installed
-        export PATH="$ANDROID_HOME/build-tools/34.0.0:$PATH"
-        buildozer android debug
+        echo "--- Debugging Environment ---"
+        echo "1. ANDROID_HOME: $ANDROID_HOME"
+        echo "2. ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+        echo "3. Current PATH: $PATH"
+        
+        echo "4. Checking SDK Structure..."
+        ls -la $ANDROID_HOME/build-tools/ || echo "Could not list $ANDROID_HOME/build-tools/"
+        ls -la $ANDROID_HOME/build-tools/34.0.0/ || echo "Could not list $ANDROID_HOME/build-tools/34.0.0/"
+        
+        echo "5. Searching for aidl..."
+        find $ANDROID_HOME -name aidl || echo "aidl not found via find command"
+        
+        echo "6. Attempting 'which aidl' after potential PATH export:"
+        export PATH="$ANDROID_HOME/build-tools/34.0.0:$PATH" # Keep the export attempt for now
+        echo "   Updated PATH: $PATH" 
+        which aidl || echo "aidl not found via which command"
+        echo "--- End Debugging ---"
 
+        # Now attempt the buildozer command again
+        buildozer android debug
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
