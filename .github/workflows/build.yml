@@ -78,7 +78,7 @@ jobs:
       - name: Build APK
         run: |
       # Buildozer shoud now use the preinstalled SDK components 
-         buildozer android debug
+          buildozer android debug
 
       # Uploads the generated APK as an artifact
       - name: Upload APK
