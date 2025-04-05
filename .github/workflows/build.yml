@@ -28,11 +28,11 @@ jobs:
         pip install cython
 
     - name: Set up Android SDK
-      uses: android-actions/setup-android@v3
+      uses: android-actions/setup-android@v2
       with:
         packages: 'cmdline-tools-version;11.0 platform-tools build-tools;34.5.0'
         accept-android-sdk-licenses: true
-        log-accepted-sdk-licenses: false
+        log-accepted-android-sdk-licenses: false
 
     - name: Download NDK
       run: |
