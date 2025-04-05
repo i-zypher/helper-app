@@ -38,7 +38,7 @@ jobs:
         run: |
           pip install cython
 
-      # *** NEW: Set up Android Environment Manually ***
+      # Set up Android Environment Manually
       - name: Set up Android Environment Manually
         run: |
           # Define SDK root path
@@ -48,38 +48,37 @@ jobs:
           mkdir -p ${SDK_ROOT}
 
           # Download and unzip latest command-line tools
-          # URL might change, check Android Studio site for latest if this fails
           echo "Downloading command-line tools..."
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
           mkdir -p ${SDK_ROOT}/cmdline-tools
           unzip cmdline-tools.zip -d ${SDK_ROOT}/cmdline-tools
-          # Create the 'latest' directory structure
           mv ${SDK_ROOT}/cmdline-tools/cmdline-tools ${SDK_ROOT}/cmdline-tools/latest
           echo "Command-line tools installed to ${SDK_ROOT}/cmdline-tools/latest"
 
-          # Add cmdline-tools bin to PATH for subsequent sdkmanager commands
-          SDKMANAGER_PATH=${SDK_ROOT}/cmdline-tools/latest/bin
-          echo "${SDKMANAGER_PATH}" >> $GITHUB_PATH
+          # Define absolute path to sdkmanager
+          SDKMANAGER_CMD=${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
 
-          # Install platform-tools and specific build-tools version
-          BUILD_TOOLS_VERSION=33.0.2
-          echo "Installing platform-tools and build-tools ${BUILD_TOOLS_VERSION}..."
-          sdkmanager --sdk_root=${SDK_ROOT} "platform-tools" "build-tools;${BUILD_TOOLS_VERSION}" || echo "sdkmanager install failed"
-
-          # Add platform-tools and build-tools to PATH for the rest of the job
+          # Add tool paths to GITHUB_PATH for subsequent steps (like Build APK)
+          echo "${SDK_ROOT}/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "${SDK_ROOT}/platform-tools" >> $GITHUB_PATH
+          BUILD_TOOLS_VERSION=33.0.2 # Define version to install/use
           echo "${SDK_ROOT}/build-tools/${BUILD_TOOLS_VERSION}" >> $GITHUB_PATH
 
-          # Accept licenses for this SDK root
+          # Install platform-tools and specific build-tools version using absolute path
+          echo "Installing platform-tools and build-tools ${BUILD_TOOLS_VERSION}..."
+          ${SDKMANAGER_CMD} --sdk_root=${SDK_ROOT} "platform-tools" "build-tools;${BUILD_TOOLS_VERSION}" || echo "sdkmanager install failed"
+
+          # Accept licenses for this SDK root using absolute path
           echo "Accepting licenses..."
-          yes | sdkmanager --licenses --sdk_root=${SDK_ROOT} || echo "sdkmanager licenses failed"
+          yes | ${SDKMANAGER_CMD} --licenses --sdk_root=${SDK_ROOT} || echo "sdkmanager licenses failed"
 
+          # List installed packages using absolute path
           echo "Listing installed packages:"
-          sdkmanager --list_installed --sdk_root=${SDK_ROOT}
+          ${SDKMANAGER_CMD} --list_installed --sdk_root=${SDK_ROOT} || echo "sdkmanager list failed"
 
-          echo "Final PATH: $PATH"
+          echo "SDK setup complete. Effective PATH for next steps will include tool directories."
 
-      # *** NEW: Download NDK r25b Manually ***
+      # Download NDK r25b Manually
       - name: Download NDK r25b
         run: |
           echo "Downloading NDK r25b..."
@@ -89,7 +88,7 @@ jobs:
           mv $HOME/ndk/android-ndk-r25b $HOME/android-ndk-r25b
           echo "NDK r25b installed to $HOME/android-ndk-r25b"
 
-      # Set up Java 11 (Recommended for broader compatibility with Android tooling)
+      # Set up Java 11
       - name: Set up Java 11
         uses: actions/setup-java@v4
         with:
@@ -104,10 +103,10 @@ jobs:
           sed -i 's/android.api = 31/android.api = 34/' buildozer.spec
           sed -i 's/android.minapi = 21/android.minapi = 21/' buildozer.spec
           sed -i 's/#android.permissions =/android.permissions = RECORD_AUDIO/' buildozer.spec
-          # *** Point to manually installed SDK and NDK ***
+          # Point to manually installed SDK and NDK
           sed -i 's|#android.sdk_path =|android.sdk_path = /home/runner/android-sdk|' buildozer.spec
           sed -i 's|#android.ndk_path =|android.ndk_path = /home/runner/android-ndk-r25b|' buildozer.spec
-          # *** Set specific build-tools and NDK versions ***
+          # Set specific build-tools and NDK versions
           sed -i 's/#android.build_tools_version =/android.build_tools_version = 33.0.2/' buildozer.spec
           sed -i 's/#android.ndk = 25b/android.ndk = 25b/' buildozer.spec
 
@@ -118,8 +117,8 @@ jobs:
           # Check effective paths just before build
           echo "Effective ANDROID_HOME: $ANDROID_HOME"
           echo "Effective PATH: $PATH"
-          which sdkmanager
-          which adb
+          which sdkmanager || echo "sdkmanager not found by which"
+          which adb || echo "adb not found by which"
           which aidl || echo "aidl not found by which"
           buildozer -v android debug
 
@@ -129,4 +128,3 @@ jobs:
         with:
           name: Helper-APK
           path: bin/*.apk
-
