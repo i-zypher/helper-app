@@ -19,7 +19,6 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
         with:
-          # Fetch all history for all tags and branches
           fetch-depth: 0
 
       # Sets up Python environment
@@ -39,6 +38,13 @@ jobs:
         run: |
           pip install cython
 
+      # *** Set up Java 17 (Required by modern sdkmanager) ***
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       # Set up Android Environment Manually
       - name: Set up Android Environment Manually
         id: setup_sdk
@@ -51,11 +57,9 @@ jobs:
 
           # Download and unzip latest command-line tools
           echo "Downloading command-line tools..."
-          # Using a known stable version URL as latest can change
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
           mkdir -p ${SDK_ROOT}/cmdline-tools
           unzip cmdline-tools.zip -d ${SDK_ROOT}/cmdline-tools
-          # Create the 'latest' directory structure
           mv ${SDK_ROOT}/cmdline-tools/cmdline-tools ${SDK_ROOT}/cmdline-tools/latest
           echo "Command-line tools installed to ${SDK_ROOT}/cmdline-tools/latest"
 
@@ -65,13 +69,12 @@ jobs:
           # Add tool paths to GITHUB_PATH for subsequent steps
           echo "${SDK_ROOT}/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "${SDK_ROOT}/platform-tools" >> $GITHUB_PATH
-          BUILD_TOOLS_VERSION=33.0.2 # Define version to install/use
+          BUILD_TOOLS_VERSION=33.0.2
           echo "${SDK_ROOT}/build-tools/${BUILD_TOOLS_VERSION}" >> $GITHUB_PATH
 
           # Install platform-tools and specific build-tools version
           echo "Installing platform-tools and build-tools ${BUILD_TOOLS_VERSION}..."
-          # Using --install flag for clarity, though often implied
-          # Added check for command success
+          # Use --install flag and check for success
           if ! ${SDKMANAGER_CMD} --install "platform-tools" "build-tools;${BUILD_TOOLS_VERSION}" --sdk_root=${SDK_ROOT}; then
             echo "sdkmanager install failed!"
             exit 1
@@ -79,11 +82,9 @@ jobs:
 
           # Accept licenses for this SDK root
           echo "Accepting licenses..."
-          # Added check for command success
           if ! yes | ${SDKMANAGER_CMD} --licenses --sdk_root=${SDK_ROOT}; then
              echo "sdkmanager licenses failed!"
-             # Optionally exit, though license failure might not always return non-zero
-             # exit 1
+             # exit 1 # Don't exit here, license acceptance might return non-zero even if it works
           fi
 
           # List installed packages
@@ -101,14 +102,12 @@ jobs:
           mv $HOME/ndk/android-ndk-r25b $HOME/android-ndk-r25b
           echo "NDK r25b installed to $HOME/android-ndk-r25b"
 
-      # Create Symlink for old sdkmanager path
+      # Create Symlink for old sdkmanager path (belt-and-suspenders approach)
       - name: Create sdkmanager Symlink
         run: |
           echo "Creating symlink for sdkmanager..."
           SDK_ROOT=$HOME/android-sdk
-          # Create the old directory structure Buildozer/p4a expects
           mkdir -p ${SDK_ROOT}/tools/bin
-          # Link the *new* sdkmanager to the *old* expected path
           ln -s ${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager ${SDK_ROOT}/tools/bin/sdkmanager
           echo "Symlink created."
           ls -l ${SDK_ROOT}/tools/bin/
@@ -134,6 +133,8 @@ jobs:
           echo "Running Buildozer..."
           # Check effective paths just before build
           echo "Effective ANDROID_HOME: $ANDROID_HOME"
+          echo "Effective JAVA_HOME: $JAVA_HOME" # Check Java version being used
+          java -version # Verify Java version
           echo "Effective PATH: $PATH"
           which sdkmanager || echo "sdkmanager not found by which"
           which adb || echo "adb not found by which"
@@ -146,4 +147,3 @@ jobs:
         with:
           name: Helper-APK
           path: bin/*.apk
-
