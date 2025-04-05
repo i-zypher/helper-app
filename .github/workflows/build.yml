@@ -1,4 +1,4 @@
-k# Workflow name
+# Workflow name
 name: Build Android APK
 
 # Controls when the workflow will run
