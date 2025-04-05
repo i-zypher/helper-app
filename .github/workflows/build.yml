@@ -40,10 +40,10 @@ jobs:
           pip install cython
 
       # Sets up Android SDK using android-actions/setup-android@v2
+      # Note: There was an annotation warning about inputs in the last run, might be transient.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
-          # Using 'cmdline-tools;11.0' and specific build-tools version
           packages: 'cmdline-tools;11.0 platform-tools build-tools;34.5.0'
           accept-android-sdk-licenses: true
           log-accepted-android-sdk-licenses: false
@@ -58,25 +58,25 @@ jobs:
       - name: Create buildozer.spec
         run: |
           buildozer init
-          # Add necessary requirements
           sed -i 's/requirements =/requirements = python3,kivy,pyttsx3,speechrecognition/' buildozer.spec
-          # Set target Android API level
           sed -i 's/android.api = 31/android.api = 34/' buildozer.spec
-          # Set minimum Android API level
           sed -i 's/android.minapi = 21/android.minapi = 21/' buildozer.spec
-          # Set the path to the downloaded NDK
           sed -i 's|#android.ndk_path =|android.ndk_path = /home/runner/android-ndk-r27c|' buildozer.spec
-          # Add required Android permissions
           sed -i 's/#android.permissions =/android.permissions = RECORD_AUDIO/' buildozer.spec
-          # Explicitly set the build tools version to match the installed one
           sed -i 's/#android.build_tools_version =/android.build_tools_version = 34.5.0/' buildozer.spec
-          # Explicitly set the SDK path where setup-android likely installed it
           sed -i 's|#android.sdk_path =|android.sdk_path = /usr/local/lib/android/sdk|' buildozer.spec
+
+      # *** ADD THIS STEP: Set up Java 11 for compatibility ***
+      - name: Set up Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin' # Adoptium Temurin distribution
+          java-version: '11'
 
       # Builds the Android APK
       - name: Build APK
         run: |
-          # Buildozer should now use the pre-installed SDK components specified in the spec
+          # Buildozer should now use the pre-installed SDK components and Java 11
           buildozer android debug
 
       # Uploads the generated APK as an artifact
